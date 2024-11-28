@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skeet Shooting Scorer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .setup-container, .scoring-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .scoring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .scoring-table th, .scoring-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .scoring-table th {
+            background-color: #f8f9fa;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .score-cell {
+            cursor: pointer;
+        }
+        .score-cell:hover {
+            background-color: #f0f0f0;
+        }
+        .total-score {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1>Skeet Shooting Scorer</h1>
+    
+    <div class="setup-container">
+        <h2>Setup</h2>
+        <div>
+            <label for="stations">Number of Stations:</label>
+            <input type="number" id="stations" min="1" max="10" value="8">
+            
+            <label for="targetsPerStation">Targets per Station:</label>
+            <input type="number" id="targetsPerStation" min="1" max="10" value="2">
+        </div>
+        <div>
+            <label for="playerName">Player Name:</label>
+            <input type="text" id="playerName" placeholder="Enter player name">
+            <button onclick="addPlayer()">Add Player</button>
+        </div>
+    </div>
+
+    <div class="scoring-container">
+        <h2>Scoring</h2>
+        <div id="scoringTable"></div>
+        <button onclick="resetScores()">Reset All Scores</button>
+        <button onclick="clearAllData()">Clear All Data</button>
+    </div>
+
+    <script>
+        let gameData = {
+            stations: 8,
+            targetsPerStation: 2,
+            players: []
+        };
+
+        function initializeFromCookies() {
+            const savedData = getCookie('skeetScoreData');
+            if (savedData) {
+                gameData = JSON.parse(savedData);
+                document.getElementById('stations').value = gameData.stations;
+                document.getElementById('targetsPerStation').value = gameData.targetsPerStation;
+                updateScoringTable();
+            }
+        }
+
+        function setCookie(name, value, days = 30) {
+            const d = new Date();
+            d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + d.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            const cname = name + "=";
+            const decodedCookie = decodeURIComponent(document.cookie);
+            const ca = decodedCookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(cname) === 0) {
+                    return c.substring(cname.length, c.length);
+                }
+            }
+            return "";
+        }
+
+        function addPlayer() {
+            const playerName = document.getElementById('playerName').value.trim();
+            if (!playerName) {
+                alert('Please enter a player name');
+                return;
+            }
+            if (gameData.players.some(p => p.name === playerName)) {
+                alert('Player already exists');
+                return;
+            }
+
+            const scores = Array(gameData.stations).fill().map(() => 
+                Array(gameData.targetsPerStation).fill('o')
+            );
+
+            gameData.players.push({
+                name: playerName,
+                scores: scores
+            });
+
+            document.getElementById('playerName').value = '';
+            updateScoringTable();
+            saveToStorage();
+        }
+
+        function toggleScore(playerIndex, stationIndex, targetIndex) {
+            const currentScore = gameData.players[playerIndex].scores[stationIndex][targetIndex];
+            gameData.players[playerIndex].scores[stationIndex][targetIndex] = currentScore === 'x' ? 'o' : 'x';
+            updateScoringTable();
+            saveToStorage();
+        }
+
+        function calculateTotal(scores) {
+            return scores.flat().filter(score => score === 'x').length;
+        }
+
+        function updateScoringTable() {
+            const tableDiv = document.getElementById('scoringTable');
+            let html = '<table class="scoring-table"><thead><tr><th>Player</th>';
+            
+            // Header row with station numbers
+            for (let i = 0; i < gameData.stations; i++) {
+                html += `<th colspan="${gameData.targetsPerStation}">Station ${i + 1}</th>`;
+            }
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            // Player rows
+            gameData.players.forEach((player, playerIndex) => {
+                html += `<tr><td>${player.name}</td>`;
+                
+                // Scores for each station
+                player.scores.forEach((stationScores, stationIndex) => {
+                    stationScores.forEach((score, targetIndex) => {
+                        html += `<td class="score-cell" onclick="toggleScore(${playerIndex}, ${stationIndex}, ${targetIndex})">${score}</td>`;
+                    });
+                });
+
+                // Total score
+                html += `<td class="total-score">${calculateTotal(player.scores)}</td></tr>`;
+            });
+
+            html += '</tbody></table>';
+            tableDiv.innerHTML = html;
+        }
+
+        function saveToStorage() {
+            setCookie('skeetScoreData', JSON.stringify(gameData));
+        }
+
+        function resetScores() {
+            if (!confirm('Are you sure you want to reset all scores?')) return;
+            gameData.players.forEach(player => {
+                player.scores = Array(gameData.stations).fill().map(() => 
+                    Array(gameData.targetsPerStation).fill('o')
+                );
+            });
+            updateScoringTable();
+            saveToStorage();
+        }
+
+        function clearAllData() {
+            if (!confirm('Are you sure you want to clear all data including players?')) return;
+            gameData.players = [];
+            updateScoringTable();
+            saveToStorage();
+        }
+
+        // Event listeners for setup changes
+        document.getElementById('stations').addEventListener('change', function() {
+            const newStations = parseInt(this.value);
+            if (newStations < 1 || newStations > 10) return;
+            
+            gameData.stations = newStations;
+            gameData.players.forEach(player => {
+                player.scores = Array(newStations).fill().map(() => 
+                    Array(gameData.targetsPerStation).fill('o')
+                );
+            });
+            updateScoringTable();
+            saveToStorage();
+        });
+
+        document.getElementById('targetsPerStation').addEventListener('change', function() {
+            const newTargets = parseInt(this.value);
+            if (newTargets < 1 || newTargets > 10) return;
+            
+            gameData.targetsPerStation = newTargets;
+            gameData.players.forEach(player => {
+                player.scores = Array(gameData.stations).fill().map(() => 
+                    Array(newTargets).fill('o')
+                );
+            });
+            updateScoringTable();
+            saveToStorage();
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initializeFromCookies);
+    </script>
+</body>
+</html>
