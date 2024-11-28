@@ -71,3 +71,7 @@ See code here:
 Note:
 > As we can see, compared to last year's attempt using the same prompt, we were able to get an exact answer with 1-shot prompting. Granted, this was a very simple test, but the growth from last year to this year is substantial; and the growth from this year to the next year is likely to be even greater.
 
+## End Result:
+
+![image](https://github.com/user-attachments/assets/588ea09b-04ee-4893-b8bd-1477fd6c8df1)
+
